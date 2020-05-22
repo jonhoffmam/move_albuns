@@ -26,6 +26,7 @@ function setAlbum() {
 			moveNatio
 			moveInter
 		done
+	delFolder
 	exec 4<&-
 }
 
@@ -39,7 +40,7 @@ function moveNatio() {
 			fi
 		done
 		echo "Transfer complete!"	
-	exe 5<&-
+	exec 5<&-
 }
 
 # Moves the album to the artist's folder in Music-International
@@ -53,6 +54,14 @@ function moveInter() {
 		done
 		echo "Transfer complete!"	
 	exec 6<&-
+}
+
+function delFolder() {
+	if [ -z "$(ls -A ./Media/Music/Music-Deezer/"$artist")" ]; then
+		echo "The folder '$artist' has been deleted!"
+	else
+		echo "Caution! The folder '$artist' not is empty!"
+	fi
 }
 
 main
