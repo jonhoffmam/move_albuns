@@ -1,66 +1,75 @@
 #!/bin/bash
 
-# Create artist list
-function artistList() {
-	ls './Music' > list.txt
-	ls './Music-International' > list_international.txt
-	ls './Music-National' > list_national.txt
-}
-artistList
 
-# Create the artist's album list and call the 'setAlbum' function
 function main() {
-	exec 3< list.txt
-		while read artist <&3; do
-			echo "Artist --> $artist"
-			ls ./Music/"${artist}" > list_albuns.txt
+	ls './Music-Deezer' > list_deezer.txt
+
+	exec 3< list_deezer.txt
+		while read artistDeezer <&3; do
+			echo "Artist --> $artistDeezer"
+			ls "./Music-Deezer/$artistDeezer" > list_albuns.txt
 			setAlbum
-		done
+			delFolder
+		done   
 	exec 3<&-
 }
 
-# Select each artist album and call the function, moveNatio and moveInter
 function setAlbum() {
 	exec 4< list_albuns.txt
 		while read album <&4; do
-			moveNatio
-			moveInter
+			callFolder
 		done
-	delFolder
 	exec 4<&-
 }
 
-# Moves the album to the artist's folder in 'Music-National'
-function moveNatio() {
-	exec 5< list_national.txt
-		while read artistNatio <&5; do
-			if [ "$artist" = "$artistNatio" ] ; then
-				mv ./Music/"$artist"/"$album" ./Music-National/"$artistNatio"
-				echo "The album '$album' of '$artistNatio' has been moved to Music-National"
+function callFolder() {
+	pathArtist=`find ./Music-National -type d -iname *"$artistDeezer"*`
+	
+	if [ ! -e "$pathArtist" ]; then		
+		pathArtist=`find ./Music-International -type d -iname *"$artistDeezer"*`
+	fi
+
+	if [ -e "$pathArtist" ]; then		
+		pathAlbum=`find "$pathArtist" -type d -iname "$album"`
+		moveFolder
+	fi
+	echo "The artist wasn't found in the destination folder!"
+}
+
+# Move the album to the artist's folder
+function moveFolder() {
+	if [ -e "$pathArtist" -a ! -e "$pathAlbum" ]; then    
+		mv "./Music-Deezer/$artistDeezer/$album" "$pathArtist"
+		echo "The album '$album' of artist '$artistDeezer' was moved to $pathArtist"
+	elif [ -e "$pathArtist" -a -e "$pathAlbum" ]; then		
+		moveMusic
+	fi
+}
+
+# Move only the songs if the album already exists
+function moveMusic() {
+	find "./Music-Deezer/$artistDeezer/$album" -type f -iname *.mp3 -o -iname *.flac > list_music.txt
+
+	exec 5< list_music.txt
+		while read music <&5; do
+			pathMusic=`find "$pathAlbum" -type f -iname *"${music##*/}"*`
+			if [ ! -e "$pathMusic" ]; then	      
+				echo "The music '${music##*/}' has been moved."
+				mv "$music" "$pathAlbum"        
 			fi
 		done
-		echo "Transfer complete!"	
 	exec 5<&-
+	echo "./Music-Deezer/$artistDeezer/$album has been removed!"
+	rm -rf "./Music-Deezer/$artistDeezer/$album"
 }
 
-# Moves the album to the artist's folder in Music-International
-function moveInter() {
-	exec 6< list_international.txt
-		while read artistInter <&6; do
-			if [ "$artist" = "$artistInter" ] ; then
-				mv ./Music/"$artist"/"$album" ./Music-International/"$artistInter"
-				echo "The album '$album' of '$artistInter' has been moved to Music-International"
-			fi
-		done
-		echo "Transfer complete!"	
-	exec 6<&-
-}
-
+# Delete empty folders
 function delFolder() {
-	if [ -z "$(ls -A ./Media/Music/Music-Deezer/"$artist")" ]; then
-		echo "The folder '$artist' has been deleted!"
+	if [ -z "$(ls -A ./Music-Deezer/"$artistDeezer")" ]; then
+		echo "The artist folder '$artistDeezer' has been removed!"
+		rm -d "./Music-Deezer/$artistDeezer"
 	else
-		echo "Caution! The folder '$artist' not is empty!"
+		echo "Caution! The folder '$artistDeezer' not is empty!"
 	fi
 }
 
