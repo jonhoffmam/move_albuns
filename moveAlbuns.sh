@@ -1,13 +1,26 @@
 #!/bin/bash
 
+pathOrigin='./Music-Deezer'
+pathDestin=('./Music-National' './Music-International')
+fileType=('*.mp3' '*.flac')
+log=${0##*/}
+logFile="${log%.*}_`date +%d-%m-%Y`".log
+timeStamp="| `date +%d-%m-%Y' | '%H:%M:%S' |'`"
+
+if [ ! -e $logFile ]; then
+    echo -e "|-------TIME STAMP------|" |& tee $logFile
+fi
+exec 1> >(tee -a "$logFile")
+exec 2>&1
+
 
 function main() {
-	ls './Music-Deezer' > list_deezer.txt
+	ls $pathOrigin > list_deezer.txt
 
 	exec 3< list_deezer.txt
-		while read artistDeezer <&3; do
-			echo "Artist --> $artistDeezer"
-			ls "./Music-Deezer/$artistDeezer" > list_albuns.txt
+		while read artistDeezer <&3; do			
+			echo -e "$timeStamp--> Artist --> $artistDeezer"
+			ls "$pathOrigin/$artistDeezer" > list_albuns.txt
 			setAlbum
 			delFolder
 		done   
@@ -23,24 +36,25 @@ function setAlbum() {
 }
 
 function callFolder() {
-	pathArtist=`find ./Music-National -type d -iname *"$artistDeezer"*`
+	pathArtist=`find ${pathDestin[0]} -type d -iname *"$artistDeezer"*`
 	
 	if [ ! -e "$pathArtist" ]; then		
-		pathArtist=`find ./Music-International -type d -iname *"$artistDeezer"*`
+		pathArtist=`find ${pathDestin[1]} -type d -iname *"$artistDeezer"*`
 	fi
 
 	if [ -e "$pathArtist" ]; then		
 		pathAlbum=`find "$pathArtist" -type d -iname "$album"`
 		moveFolder
-	fi
-	echo "The artist wasn't found in the destination folder!"
+	else
+		echo -e "$timeStamp--> Not found: The artist wasn't found in the destination folder!"
+	fi	
 }
 
 # Move the album to the artist's folder
 function moveFolder() {
 	if [ -e "$pathArtist" -a ! -e "$pathAlbum" ]; then    
-		mv "./Music-Deezer/$artistDeezer/$album" "$pathArtist"
-		echo "The album '$album' of artist '$artistDeezer' was moved to $pathArtist"
+		mv "$pathOrigin/$artistDeezer/$album" "$pathArtist"
+		echo -e "$timeStamp--> Moved: The album '$album' of artist '$artistDeezer' was moved to $pathArtist"
 	elif [ -e "$pathArtist" -a -e "$pathAlbum" ]; then		
 		moveMusic
 	fi
@@ -48,29 +62,33 @@ function moveFolder() {
 
 # Move only the songs if the album already exists
 function moveMusic() {
-	find "./Music-Deezer/$artistDeezer/$album" -type f -iname *.mp3 -o -iname *.flac > list_music.txt
+	find "$pathOrigin/$artistDeezer/$album" -type f -iname ${fileType[0]} -o -iname ${fileType[1]} > list_music.txt
 
 	exec 5< list_music.txt
 		while read music <&5; do
 			pathMusic=`find "$pathAlbum" -type f -iname *"${music##*/}"*`
-			if [ ! -e "$pathMusic" ]; then	      
-				echo "The music '${music##*/}' has been moved."
-				mv "$music" "$pathAlbum"        
+			if [ ! -e "$pathMusic" ]; then				
+				echo -e "$timeStamp--> Moved: The music '${music##*/}' has been moved."
+				mv "$music" "$pathAlbum"
 			fi
 		done
 	exec 5<&-
-	echo "./Music-Deezer/$artistDeezer/$album has been removed!"
-	rm -rf "./Music-Deezer/$artistDeezer/$album"
+	echo -e "$timeStamp--> Removed: The album '$album' has been removed!"
+	rm -rf "$pathOrigin/$artistDeezer/$album"
 }
 
 # Delete empty folders
 function delFolder() {
-	if [ -z "$(ls -A ./Music-Deezer/"$artistDeezer")" ]; then
-		echo "The artist folder '$artistDeezer' has been removed!"
-		rm -d "./Music-Deezer/$artistDeezer"
+	if [ -z "$(ls -A "$pathOrigin/$artistDeezer")" ]; then		
+		echo -e "$timeStamp--> Removed: The artist folder '$artistDeezer' has been removed!"
+		rm -d "$pathOrigin/$artistDeezer"
 	else
-		echo "Caution! The folder '$artistDeezer' not is empty!"
+		echo -e "$timeStamp--> Not removed: The artist folder '$artistDeezer' not is empty to be removed!"
 	fi
+	rm -f *.txt
 }
 
 main
+
+exec 1>&-
+exec 2>&-
