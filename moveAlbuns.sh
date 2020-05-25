@@ -1,18 +1,20 @@
 #!/bin/bash
 
-pathOrigin='./Music-Deezer'
-pathDestin=('./Music-National' './Music-International')
 fileType=('*.mp3' '*.flac')
+pathOrigin='./Music-Deezer'
+pathDestination=('./Music-National' './Music-International')
+pathLogs='./logs'
 log=${0##*/}
-logFile="${log%.*}_`date +%d-%m-%Y`".log
+logFile="$pathLogs/${log%.*}_`date +%d-%m-%Y`".log
 timeStamp="| `date +%d-%m-%Y' | '%H:%M:%S' |'`"
 
-if [ ! -e $logFile ]; then
-    echo -e "|-------TIME STAMP------|" |& tee $logFile
+if [ ! -e $pathLogs ]; then
+	mkdir $pathLogs
 fi
-exec 1> >(tee -a "$logFile")
-exec 2>&1
 
+if [ ! -e $logFile ]; then
+	echo -e "|-------TIME STAMP------|" |& tee $logFile
+fi
 
 function main() {
 	ls $pathOrigin > list_deezer.txt
@@ -36,10 +38,10 @@ function setAlbum() {
 }
 
 function callFolder() {
-	pathArtist=`find ${pathDestin[0]} -type d -iname *"$artistDeezer"*`
+	pathArtist=`find ${pathDestination[0]} -type d -iname *"$artistDeezer"*`
 	
 	if [ ! -e "$pathArtist" ]; then		
-		pathArtist=`find ${pathDestin[1]} -type d -iname *"$artistDeezer"*`
+		pathArtist=`find ${pathDestination[1]} -type d -iname *"$artistDeezer"*`
 	fi
 
 	if [ -e "$pathArtist" ]; then		
@@ -88,7 +90,4 @@ function delFolder() {
 	rm -f *.txt
 }
 
-main
-
-exec 1>&-
-exec 2>&-
+main 2>&1 | tee -a $logFile
